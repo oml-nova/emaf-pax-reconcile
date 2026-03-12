@@ -1,0 +1,18 @@
+{
+  "name": "pax_reconciliation",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@jm18457/kafkajs-msk-iam-authentication-mechanism": "^3.1.2",
+    "kafkajs": "^2.2.4",
+    "mongodb": "^6.4.0",
+    "uuid": "^9.0.1"
+  }
+}
