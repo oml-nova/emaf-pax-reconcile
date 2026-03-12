@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	logger "github.com/emaf-pax/reconcile-service/pkg/superlog"
+	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"

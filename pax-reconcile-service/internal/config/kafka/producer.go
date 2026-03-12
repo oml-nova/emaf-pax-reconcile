@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	logger "github.com/emaf-pax/reconcile-service/pkg/superlog"
+	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 
 	"github.com/IBM/sarama"
 )

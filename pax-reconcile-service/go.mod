@@ -1,4 +1,4 @@
-module github.com/emaf-pax/reconcile-service
+module github.com/emaf-pax/pax-reconcile-service
 
 go 1.22
 

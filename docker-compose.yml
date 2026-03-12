@@ -1,7 +1,7 @@
 services:
-  reconcile-service:
+  pax-reconcile-service:
     build:
-      context: ./reconcile-service
+      context: ./pax-reconcile-service
     environment:
       NODE_ENV: ${NODE_ENV:-local}
       AWS_REGION: ${AWS_REGION:-ap-south-1}

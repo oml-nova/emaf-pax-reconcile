@@ -15,10 +15,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	database "github.com/emaf-pax/reconcile-service/internal/config/databases"
-	"github.com/emaf-pax/reconcile-service/internal/config/kafka"
-	"github.com/emaf-pax/reconcile-service/internal/parser"
-	logger "github.com/emaf-pax/reconcile-service/pkg/superlog"
+	database "github.com/emaf-pax/pax-reconcile-service/internal/config/databases"
+	"github.com/emaf-pax/pax-reconcile-service/internal/config/kafka"
+	"github.com/emaf-pax/pax-reconcile-service/internal/parser"
+	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 )
 
 // merchantMapping is the pre-loaded merchantId -> restaurantRefId cache.

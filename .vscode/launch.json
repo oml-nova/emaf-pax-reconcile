@@ -6,12 +6,12 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/reconcile-service/cmd/main.go",
+      "program": "${workspaceFolder}/pax-reconcile-service/cmd/main.go",
       "env": {
         "NODE_ENV": "local",
         "AWS_REGION": "ap-south-1"
       },
-      "cwd": "${workspaceFolder}/reconcile-service",
+      "cwd": "${workspaceFolder}/pax-reconcile-service",
       "args": [],
       "console": "integratedTerminal"
     },
@@ -20,14 +20,14 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/reconcile-service/cmd/main.go",
+      "program": "${workspaceFolder}/pax-reconcile-service/cmd/main.go",
       "env": {
         "NODE_ENV": "qa02",
         "AWS_REGION": "us-east-1",
         "LOAD_CREDS_FROM_FILE": "false",
         "CONFIG_PATH":"bakeit360-api-config-qa02"
       },
-      "cwd": "${workspaceFolder}/reconcile-service",
+      "cwd": "${workspaceFolder}/pax-reconcile-service",
       "args": [],
       "console": "integratedTerminal"
     },
@@ -36,14 +36,14 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/reconcile-service/cmd/main.go",
+      "program": "${workspaceFolder}/pax-reconcile-service/cmd/main.go",
       "env": {
         "NODE_ENV": "qa03",
         "AWS_REGION": "us-east-1",
         "LOAD_CREDS_FROM_FILE": "false",
         "CONFIG_PATH":"bakeit360-api-config-qa02"
       },
-      "cwd": "${workspaceFolder}/reconcile-service",
+      "cwd": "${workspaceFolder}/pax-reconcile-service",
       "args": [],
       "console": "integratedTerminal"
     }

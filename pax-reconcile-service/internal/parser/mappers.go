@@ -99,11 +99,11 @@ func BatchSettlementTypeMapper(code string) string {
 // GetCardNetwork returns the normalised network name (e.g. "VISA", "MASTERCARD").
 func GetCardNetwork(abbreviation string) string {
 	switch abbreviation {
-	case "DISC", "DSCV":
+	case "DISC", "DISCV":
 		return "DISCOVER"
 	case "MCRD":
 		return "MASTERCARD"
-	case "VISA", "VIS1":
+	case "VISA":
 		return "VISA"
 	case "AMEX":
 		return "AMEX"

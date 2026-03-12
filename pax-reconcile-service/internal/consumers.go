@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 
-	"github.com/emaf-pax/reconcile-service/internal/config/sqs"
-	reconciliation "github.com/emaf-pax/reconcile-service/internal/handlers/reconciliation"
-	logger "github.com/emaf-pax/reconcile-service/pkg/superlog"
+	"github.com/emaf-pax/pax-reconcile-service/internal/config/sqs"
+	reconciliation "github.com/emaf-pax/pax-reconcile-service/internal/handlers/reconciliation"
+	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 )
 
 // InitSQSConsumer registers all SQS message handlers and starts the processing loop.

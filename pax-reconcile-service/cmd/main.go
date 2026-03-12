@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	app "github.com/emaf-pax/reconcile-service/internal"
-	"github.com/emaf-pax/reconcile-service/internal/config"
-	database "github.com/emaf-pax/reconcile-service/internal/config/databases"
-	s3client "github.com/emaf-pax/reconcile-service/internal/config/s3"
-	service "github.com/emaf-pax/reconcile-service/internal/services/reconciliation"
-	logger "github.com/emaf-pax/reconcile-service/pkg/superlog"
+	app "github.com/emaf-pax/pax-reconcile-service/internal"
+	"github.com/emaf-pax/pax-reconcile-service/internal/config"
+	database "github.com/emaf-pax/pax-reconcile-service/internal/config/databases"
+	s3client "github.com/emaf-pax/pax-reconcile-service/internal/config/s3"
+	service "github.com/emaf-pax/pax-reconcile-service/internal/services/reconciliation"
+	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 )
 
 func main() {
