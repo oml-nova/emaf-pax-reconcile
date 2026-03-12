@@ -105,6 +105,21 @@ func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) error
 		case "CREDIT_RECONCILIATION_4":
 			parser.ParseCreditReconciliation4(line, tx)
 
+		case "CREDIT_RECONCILIATION_5":
+			parser.ParseCreditReconciliation5(line, tx)
+
+		case "CUSTOMER_ID_1":
+			parser.ParseCustomerID1(line, tx)
+
+		case "REWARD_DATA_1":
+			parser.ParseRewardData1(line, tx)
+
+		case "CREDIT_RECONCILIATION_13":
+			parser.ParseCreditReconciliation13(line, tx)
+
+		case "CREDIT_RECONCILIATION_15":
+			parser.ParseCreditReconciliation15(line, tx)
+
 		case "CREDIT_FILE_END":
 			if txInProgress {
 				if err := reconcileTransaction(ctx, mr.SettlementMID, tx); err != nil {

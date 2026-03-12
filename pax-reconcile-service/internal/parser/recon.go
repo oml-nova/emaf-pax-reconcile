@@ -105,3 +105,33 @@ func ParseCreditReconciliation4(line string, tx *Transaction) {
 	}
 	tx.ActionType = field(line, 61, 63)
 }
+
+// ParseCreditReconciliation5 extracts the Amazon Pay Charge ID.
+func ParseCreditReconciliation5(line string, tx *Transaction) {
+	tx.AmazonPayChargeID = field(line, 15, 42)
+}
+
+// ParseCreditReconciliation13 extracts SoftPOS mobile device fields.
+func ParseCreditReconciliation13(line string, tx *Transaction) {
+	tx.SoftPOSMobileDeviceType = field(line, 15, 16)
+	tx.SoftPOSMobileTerminalId = field(line, 16, 48)
+}
+
+// ParseCreditReconciliation15 extracts merchant surcharge fields.
+func ParseCreditReconciliation15(line string, tx *Transaction) {
+	tx.MerchantSurchargeAmount = field(line, 15, 22)
+	tx.MerchantSurchargeAmountSign = field(line, 22, 23)
+}
+
+// ParseCustomerID1 extracts the correlation ID.
+func ParseCustomerID1(line string, tx *Transaction) {
+	tx.CorrelationId = field(line, 15, 24)
+}
+
+// ParseRewardData1 extracts reward/loyalty fields.
+func ParseRewardData1(line string, tx *Transaction) {
+	tx.TerminalAllowsRewardsLoyalty = field(line, 15, 16)
+	tx.BinEligibleForRewardsLoyalty = field(line, 16, 17)
+	tx.CardEligibleForRewardsLoyalty = field(line, 17, 18)
+	tx.RewardLoyaltyAmount = field(line, 18, 25)
+}

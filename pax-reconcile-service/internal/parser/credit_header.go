@@ -11,6 +11,7 @@ func ParseCreditHeader(line string, mr *MerchantRecord) {
 	mr.Version = field(line, 23, 28)
 	mr.ChainCode = field(line, 105, 111)
 	mr.FileCreationDate = parseCreditHeaderDateTime(line)
+	mr.ProcessingDate = field(line, 42, 50)
 }
 
 func parseCreditHeaderDateTime(line string) string {

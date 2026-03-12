@@ -55,6 +55,21 @@ type Transaction struct {
 	DCCMCPIndicator         string `json:"dcc_mcp"`
 	TipGratuityAmount       string `json:"tip_gratuity_amount"`
 	ActionType              string `json:"action_type"`
+	// CR5
+	AmazonPayChargeID string `json:"amazon_pay_charge_id"`
+	// CR13
+	SoftPOSMobileDeviceType string `json:"soft_pos_mobile_device_type"`
+	SoftPOSMobileTerminalId string `json:"soft_pos_mobile_terminal_id"`
+	// CR15
+	MerchantSurchargeAmount     string `json:"merchant_surcharge_amount"`
+	MerchantSurchargeAmountSign string `json:"merchant_surcharge_amount_sign"`
+	// Customer ID
+	CorrelationId string `json:"correlation_id"`
+	// Reward Data
+	TerminalAllowsRewardsLoyalty string `json:"terminal_allows_rewards_loyalty"`
+	BinEligibleForRewardsLoyalty string `json:"bin_eligible_for_rewards_loyalty"`
+	CardEligibleForRewardsLoyalty string `json:"card_eligible_for_rewards_loyalty"`
+	RewardLoyaltyAmount          string `json:"reward_loyalty_amount"`
 }
 
 // MerchantRecord accumulates merchant-level context while parsing an EMAF file.
@@ -74,6 +89,8 @@ type MerchantRecord struct {
 	MerchantCity        string
 	MerchantState       string
 	MerchantZipCode     string
+	ProcessingDate      string
+	TimeZone            string
 }
 
 // SQSPayload is the message body sent downstream for reconciliation.

@@ -23,4 +23,5 @@ func ParseMerchantHeader2(line string, mr *MerchantRecord) {
 	if mr.MerchantCountryCode == "" {
 		mr.MerchantCountryCode = field(line, 67, 70)
 	}
+	mr.TimeZone = field(line, 70, 73)
 }
