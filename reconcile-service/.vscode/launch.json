@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Local Environment",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/main.go",
+      "env": {
+        "NODE_ENV": "local",
+        "AWS_REGION": "ap-south-1"
+      },
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "QA02 Environment",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/main.go",
+      "env": {
+        "NODE_ENV": "qa02",
+        "AWS_REGION": "us-east-1",
+        "LOAD_CREDS_FROM_FILE": "false"
+      },
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "QA03 Environment",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/main.go",
+      "env": {
+        "NODE_ENV": "qa03",
+        "AWS_REGION": "us-east-1",
+        "LOAD_CREDS_FROM_FILE": "false"
+      },
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "console": "integratedTerminal"
+    }
+  ]
+}

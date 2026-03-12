@@ -1,0 +1,20 @@
+services:
+  reconcile-service:
+    build:
+      context: ./reconcile-service
+    environment:
+      NODE_ENV: ${NODE_ENV:-local}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SOURCE_QUEUE_URI: ${SOURCE_QUEUE_URI}        # SQS queue receiving S3 event notifications for EMAF files
+      DB_URI: ${DB_URI}
+      DB_NAME: ${DB_NAME}
+      KAFKA_HOST: ${KAFKA_HOST}                    # JSON array, e.g. '["broker1:9092","broker2:9092"]'
+      KAFKA_SSL: ${KAFKA_SSL:-false}               # 'true' for MSK IAM auth
+      KAFKA_SASL: ${KAFKA_SASL:-false}             # 'true' for plain SASL auth
+      KAFKA_SASL_USERNAME: ${KAFKA_SASL_USERNAME:-}
+      KAFKA_SASL_PASSWORD: ${KAFKA_SASL_PASSWORD:-}
+      PRODUCER_TOPIC: ${PRODUCER_TOPIC}
+      PRODUCER_EVENT: ${PRODUCER_EVENT}
+    restart: unless-stopped
