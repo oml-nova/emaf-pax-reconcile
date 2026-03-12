@@ -6,12 +6,12 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/cmd/main.go",
+      "program": "${workspaceFolder}/reconcile-service/cmd/main.go",
       "env": {
         "NODE_ENV": "local",
         "AWS_REGION": "ap-south-1"
       },
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/reconcile-service",
       "args": [],
       "console": "integratedTerminal"
     },
@@ -20,13 +20,13 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/cmd/main.go",
+      "program": "${workspaceFolder}/reconcile-service/cmd/main.go",
       "env": {
         "NODE_ENV": "qa02",
         "AWS_REGION": "us-east-1",
         "LOAD_CREDS_FROM_FILE": "false"
       },
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/reconcile-service",
       "args": [],
       "console": "integratedTerminal"
     },
@@ -35,13 +35,13 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/cmd/main.go",
+      "program": "${workspaceFolder}/reconcile-service/cmd/main.go",
       "env": {
         "NODE_ENV": "qa03",
         "AWS_REGION": "us-east-1",
         "LOAD_CREDS_FROM_FILE": "false"
       },
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/reconcile-service",
       "args": [],
       "console": "integratedTerminal"
     }
