@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	configServiceBaseURL = "http://config-service"
-	serviceID            = "reconcile-service"
+	configServiceBaseURL = "https://qa03.as1.dev.bakeit360.com/config"
+	serviceID            = "pax-reconcile-service"
 	serviceRole          = "admin"
 )
 

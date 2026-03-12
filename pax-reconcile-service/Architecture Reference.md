@@ -3138,3 +3138,22 @@ func CompareFields(v1, v2 reflect.Value, prefix string) []string {
 ---
 
 *End of architecture reference.*
+
+
+Config service config.json
+{
+  "LOAD_CREDS_FROM_FILE": true,
+  "DB_URI": "{@mongodb.connectionString}",
+  "DB_NAME": "bakeit360db_{@env}",
+  "MERCHANT_COLLECTION": "merchant_accounts",
+  "SOURCE_QUEUE_URI": "https://sqs.ap-south-1.amazonaws.com/654654626788/pl-d-as1-EmafReconcileQueue-{@env}",
+  "KAFKA_HOST": {@kafka.host},
+  "KAFKA_SSL": false,
+  "KAFKA_SASL": true,
+  "KAFKA_SASL_USERNAME": "{@kafka.username}",
+  "KAFKA_SASL_PASSWORD": "{@kafka.password}",
+  "PRODUCER_TOPIC": "reconcile-events-{@env}",
+  "PRODUCER_EVENT": "RECONCILIATION_MATCHED",
+  "LOGGER_HOST": "{@internalUrl.logging}/{@env}-reconcile-service.log",
+  "REMOTE_LOG": true
+}
