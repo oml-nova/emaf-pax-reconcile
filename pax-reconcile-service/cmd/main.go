@@ -10,8 +10,7 @@ import (
 	"github.com/emaf-pax/pax-reconcile-service/internal/config"
 	database "github.com/emaf-pax/pax-reconcile-service/internal/config/databases"
 	s3client "github.com/emaf-pax/pax-reconcile-service/internal/config/s3"
-	service "github.com/emaf-pax/pax-reconcile-service/internal/services/reconciliation"
-	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
+logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 )
 
 func main() {
@@ -50,20 +49,15 @@ func main() {
 		panic(err.Error())
 	}
 
-	// STEP 5 — Load merchant mappings into memory
+	// STEP 5 — Start SQS consumer in background goroutine
 	ctx := context.Background()
-	err = service.LoadMerchantMappings(ctx)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// STEP 6 — Start SQS consumer (blocks in goroutine)
 	logger.Log().Info("Reconcile service started. Polling for S3 event messages...", nil)
 
 	go func() {
 		app.InitSQSConsumer(ctx)
 	}()
 
-	// Block forever (consumer runs in background goroutine)
-	select {}
+	// STEP 6 — Build HTTP router and block on it
+	r := app.RegisterRoutes()
+	r.StartServer()
 }

@@ -1,9 +1,13 @@
 package superlog
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type LogLevel int
@@ -88,4 +92,26 @@ func (l *Logger) Error(message string, data map[string]interface{}) *LogEvent {
 func (e *LogEvent) Correlate(correlationID string) *LogEvent {
 	e.Correlation = correlationID
 	return e
+}
+
+// GinMiddleware logs every HTTP request after it completes.
+func GinMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var bodyBytes []byte
+		if c.Request.Body != nil {
+			bodyBytes, _ = io.ReadAll(c.Request.Body)
+		}
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		start := time.Now()
+		c.Next()
+
+		Log().Info("API: "+c.Request.URL.Path, map[string]interface{}{
+			"method":   c.Request.Method,
+			"path":     c.Request.URL.Path,
+			"status":   c.Writer.Status(),
+			"duration": time.Since(start).String(),
+			"clientIP": c.ClientIP(),
+		})
+	}
 }

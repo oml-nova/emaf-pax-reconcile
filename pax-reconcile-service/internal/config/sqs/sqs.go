@@ -55,7 +55,7 @@ func (s *Service) RegisterHandler(messageType string, handler MessageHandler) {
 func (s *Service) ReceiveMessages(ctx context.Context) ([]types.Message, error) {
 	out, err := s.client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.queueURL),
-		MaxNumberOfMessages: 10,
+		MaxNumberOfMessages: 1,
 		WaitTimeSeconds:     20,
 	})
 	if err != nil {
@@ -109,6 +109,7 @@ func (s *Service) StartProcessing(ctx context.Context) {
 					logger.Log().Error("Handler failed", map[string]interface{}{"error": err.Error(), "type": wrapper.Type})
 					continue
 				}
+				logger.Log().Debug("SQS message processed successfully", map[string]interface{}{"type": wrapper.Type})
 				s.DeleteMessage(ctx, *msg.ReceiptHandle)
 				continue
 			}
@@ -119,6 +120,7 @@ func (s *Service) StartProcessing(ctx context.Context) {
 					logger.Log().Error("Default handler failed", map[string]interface{}{"error": err.Error()})
 					continue
 				}
+				logger.Log().Debug("SQS default message processed successfully", nil)
 				s.DeleteMessage(ctx, *msg.ReceiptHandle)
 			}
 		}

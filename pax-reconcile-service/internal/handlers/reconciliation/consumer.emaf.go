@@ -50,12 +50,29 @@ func HandleS3EventMessage(data []byte) error {
 
 	body, err := s3client.GetObject(ctx, bucket, key)
 	if err != nil {
+		logger.Log().Error("Failed to download EMAF file from S3", map[string]interface{}{
+			"error":  err.Error(),
+			"bucket": bucket,
+			"key":    key,
+		})
 		return fmt.Errorf("downloading s3://%s/%s: %w", bucket, key, err)
 	}
 
-	if err := service.ProcessFile(ctx, body, key); err != nil {
+	logger.Log().Info("Downloaded EMAF file from S3", map[string]interface{}{
+		"bucket": bucket,
+		"key":    key,
+	})
+
+	if _, err := service.ProcessFile(ctx, body, key); err != nil {
+		logger.Log().Error("Failed to process EMAF file", map[string]interface{}{
+			"error": err.Error(),
+			"key":   key,
+		})
 		return fmt.Errorf("processing %s: %w", key, err)
 	}
 
+	logger.Log().Info("EMAF file processing complete", map[string]interface{}{
+		"key": key,
+	})
 	return nil
 }

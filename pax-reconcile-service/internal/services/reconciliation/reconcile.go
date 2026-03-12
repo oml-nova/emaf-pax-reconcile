@@ -3,10 +3,12 @@ package reconciliation
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,54 +23,69 @@ import (
 	logger "github.com/emaf-pax/pax-reconcile-service/pkg/superlog"
 )
 
-// merchantMapping is the pre-loaded merchantId -> restaurantRefId cache.
-var merchantMapping map[string]string
+// merchantCache provides thread-safe lazy caching of merchantId -> restaurantRefId.
+var merchantCache sync.Map
 
-// LoadMerchantMappings fetches all merchant accounts for a given gateway
-// and caches them in memory.
-func LoadMerchantMappings(ctx context.Context) error {
-	collection := os.Getenv("MERCHANT_COLLECTION")
-	if collection == "" {
-		collection = "merchant_accounts"
-	}
-
-	cur, err := database.GetMongoDB().Collection(collection).Find(ctx, bson.D{
-		{Key: "gatewayId", Value: "WorldPay"},
-	})
-	if err != nil {
-		return err
-	}
-	defer cur.Close(ctx)
-
-	mapping := make(map[string]string)
-	for cur.Next(ctx) {
-		var doc bson.M
-		if err := cur.Decode(&doc); err != nil {
-			return err
-		}
-		merchantID, _ := doc["merchantId"].(string)
-		refID, _ := doc["refId"].(string)
-		if merchantID != "" {
-			mapping[merchantID] = refID
-		}
-	}
-	merchantMapping = mapping
-	logger.Log().Info("Merchant mappings loaded", map[string]interface{}{
-		"count": len(mapping),
-	})
-	return cur.Err()
+// ReconcileSummary holds the outcome counts for a single file run.
+type ReconcileSummary struct {
+	File      string `json:"file"`
+	Total     int    `json:"total"`
+	Matched   int    `json:"matched"`
+	Unmatched int    `json:"unmatched"`
+	Errors    int    `json:"errors"`
+	Duration  string `json:"duration"`
 }
 
 // ProcessFile downloads an EMAF file from S3, parses it line-by-line,
 // and reconciles each transaction against MongoDB.
-func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) error {
+func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) (*ReconcileSummary, error) {
 	defer body.Close()
+	startTime := time.Now()
+
+	logger.Log().Info("Starting file processing", map[string]interface{}{"file": fileName})
 
 	var (
 		mr           = &parser.MerchantRecord{}
 		tx           = &parser.Transaction{}
 		txInProgress bool
+		totalTx      int
+		matchedTx    int
+		unmatchedTx  int
+		errorTx      int
 	)
+
+	reconcileTx := func(merchantID string) {
+		totalTx++
+		emafRefId := saveParsedTransaction(ctx, mr, tx, fileName)
+
+		logger.Log().Debug("Reconciling transaction", map[string]interface{}{
+			"file":       fileName,
+			"txIndex":    totalTx,
+			"merchantId": merchantID,
+			"amount":     tx.Amount,
+			"cardLast4":  tx.AccountNumber,
+			"cardType":   tx.CardNetworkType,
+			"authCode":   tx.AuthorizationCode,
+			"dateTime":   tx.DateTime,
+		})
+
+		matched, err := reconcileTransaction(ctx, merchantID, tx, emafRefId)
+		if err != nil {
+			errorTx++
+			logger.Log().Error("Reconcile failed", map[string]interface{}{
+				"error":      err.Error(),
+				"file":       fileName,
+				"txIndex":    totalTx,
+				"merchantId": merchantID,
+				"amount":     tx.Amount,
+				"cardLast4":  tx.AccountNumber,
+			})
+		} else if matched {
+			matchedTx++
+		} else {
+			unmatchedTx++
+		}
+	}
 
 	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
@@ -81,16 +98,18 @@ func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) error
 
 		case "MID_HEADER_1":
 			parser.ParseMerchantHeader1(line, mr)
+			logger.Log().Debug("Parsed merchant header", map[string]interface{}{
+				"file":          fileName,
+				"settlementMID": mr.SettlementMID,
+				"merchantName":  mr.MerchantName,
+			})
 
 		case "MID_HEADER_2":
 			parser.ParseMerchantHeader2(line, mr)
 
 		case "CREDIT_RECONCILIATION_1":
-			// Flush the previous transaction before starting a new one
 			if txInProgress {
-				if err := reconcileTransaction(ctx, mr.SettlementMID, tx); err != nil {
-					logger.Log().Warn("Reconcile error", map[string]interface{}{"error": err.Error()})
-				}
+				reconcileTx(mr.SettlementMID)
 			}
 			tx = &parser.Transaction{}
 			parser.ParseCreditReconciliation1(line, tx)
@@ -122,9 +141,7 @@ func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) error
 
 		case "CREDIT_FILE_END":
 			if txInProgress {
-				if err := reconcileTransaction(ctx, mr.SettlementMID, tx); err != nil {
-					logger.Log().Warn("Reconcile error", map[string]interface{}{"error": err.Error()})
-				}
+				reconcileTx(mr.SettlementMID)
 				txInProgress = false
 			}
 			mr = &parser.MerchantRecord{}
@@ -134,26 +151,46 @@ func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) error
 
 	// Flush trailing transaction if file didn't end with CREDIT_FILE_END
 	if txInProgress {
-		if err := reconcileTransaction(ctx, mr.SettlementMID, tx); err != nil {
-			logger.Log().Warn("Reconcile error (trailing)", map[string]interface{}{"error": err.Error()})
-		}
+		reconcileTx(mr.SettlementMID)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		logger.Log().Error("File scan error", map[string]interface{}{"file": fileName, "error": err.Error()})
+		return nil, err
 	}
 
-	logger.Log().Info("Completed processing file", map[string]interface{}{"file": fileName})
-	return nil
+	summary := &ReconcileSummary{
+		File:      fileName,
+		Total:     totalTx,
+		Matched:   matchedTx,
+		Unmatched: unmatchedTx,
+		Errors:    errorTx,
+		Duration:  time.Since(startTime).String(),
+	}
+
+	logger.Log().Info("Completed processing file", map[string]interface{}{
+		"file":      fileName,
+		"total":     totalTx,
+		"matched":   matchedTx,
+		"unmatched": unmatchedTx,
+		"errors":    errorTx,
+		"duration":  summary.Duration,
+	})
+	return summary, nil
 }
 
 // reconcileTransaction matches a parsed transaction against order_transactions in MongoDB.
-func reconcileTransaction(ctx context.Context, merchantID string, tx *parser.Transaction) error {
-	restaurantRefID := getRestaurantRefID(merchantID)
+// Returns (true, nil) for matched, (false, nil) for unmatched, (false, err) on error.
+func reconcileTransaction(ctx context.Context, merchantID string, tx *parser.Transaction, emafRefId string) (bool, error) {
+	restaurantRefID := getRestaurantRefID(ctx, merchantID)
 
 	amount, _ := strconv.ParseFloat(strings.TrimSpace(tx.Amount), 64)
 	date, err := time.Parse(time.RFC3339, tx.DateTime)
 	if err != nil {
+		logger.Log().Warn("Invalid transaction date, using current time", map[string]interface{}{
+			"dateTime":   tx.DateTime,
+			"merchantId": merchantID,
+		})
 		date = time.Now().UTC()
 	}
 	prevDay := date.AddDate(0, 0, -1)
@@ -201,12 +238,26 @@ func reconcileTransaction(ctx context.Context, merchantID string, tx *parser.Tra
 	err = orderTransactions.FindOne(ctx, filter).Decode(&found)
 
 	if err == nil {
-		return handleMatched(ctx, found, merchantID, restaurantRefID, transactionIdentifier, amount, date, tx)
+		if err := handleMatched(ctx, found, merchantID, restaurantRefID, transactionIdentifier, amount, date, tx, emafRefId); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
 	if err == mongo.ErrNoDocuments {
-		return handleUnmatched(ctx, merchantID, restaurantRefID, transactionIdentifier, amount, date, tx)
+		logger.Log().Info("Transaction unmatched", map[string]interface{}{
+			"merchantId":            merchantID,
+			"amount":                amount,
+			"cardLast4":             last4,
+			"cardType":              cardType,
+			"transactionIdentifier": transactionIdentifier,
+			"restaurantRefId":       restaurantRefID,
+		})
+		if err := handleUnmatched(ctx, merchantID, restaurantRefID, transactionIdentifier, amount, date, tx); err != nil {
+			return false, err
+		}
+		return false, nil
 	}
-	return err
+	return false, fmt.Errorf("MongoDB query error: %w", err)
 }
 
 func handleMatched(
@@ -216,10 +267,20 @@ func handleMatched(
 	amount float64,
 	date time.Time,
 	tx *parser.Transaction,
+	emafRefId string,
 ) error {
 	refID, _ := found["refId"].(string)
 	orderRefID, _ := found["orderRefId"].(string)
 	now := time.Now().UTC()
+
+	logger.Log().Info("Transaction matched", map[string]interface{}{
+		"refId":                 refID,
+		"orderRefId":            orderRefID,
+		"merchantId":            merchantID,
+		"amount":                amount,
+		"transactionIdentifier": transactionIdentifier,
+		"restaurantRefId":       restaurantRefID,
+	})
 
 	cardDetails := bson.M{
 		"cardNumber": tx.AccountNumber,
@@ -251,6 +312,10 @@ func handleMatched(
 		options.Update().SetUpsert(true),
 	)
 	if err != nil {
+		logger.Log().Error("Failed to upsert matched_order_transaction", map[string]interface{}{
+			"error": err.Error(),
+			"refId": refID,
+		})
 		return err
 	}
 
@@ -259,18 +324,38 @@ func handleMatched(
 		bson.D{{Key: "$set", Value: bson.M{"paymentStatus": "Success"}}},
 	)
 	if err != nil {
+		logger.Log().Error("Failed to update order_transactions paymentStatus", map[string]interface{}{
+			"error": err.Error(),
+			"refId": refID,
+		})
 		return err
 	}
 	if result.MatchedCount == 0 {
-		logger.Log().Warn("order_transactions update matched 0 docs", map[string]interface{}{"refId": refID})
+		logger.Log().Warn("order_transactions update matched 0 docs — possible stale read", map[string]interface{}{"refId": refID})
 	}
 
 	producerEvent := os.Getenv("PRODUCER_EVENT")
-	return kafka.PublishKafkaMessage(orderRefID, producerEvent, map[string]string{
+	if err := kafka.PublishKafkaMessage(orderRefID, producerEvent, map[string]string{
 		"orderRefId":       orderRefID,
 		"transactionRefId": refID,
 		"paymentStatus":    "Success",
+	}); err != nil {
+		logger.Log().Error("Failed to publish Kafka reconciliation event", map[string]interface{}{
+			"error":      err.Error(),
+			"orderRefId": orderRefID,
+			"refId":      refID,
+		})
+		return err
+	}
+
+	logger.Log().Debug("Kafka reconciliation event published", map[string]interface{}{
+		"orderRefId": orderRefID,
+		"refId":      refID,
+		"event":      producerEvent,
 	})
+
+	markEmafReconciled(ctx, emafRefId, refID)
+	return nil
 }
 
 func handleUnmatched(
@@ -321,12 +406,51 @@ func handleUnmatched(
 		options.FindOneAndUpdate().SetUpsert(true),
 	)
 	if err := result.Err(); err != nil && err != mongo.ErrNoDocuments {
+		logger.Log().Error("Failed to upsert unmatched_order_transaction", map[string]interface{}{
+			"error":                 err.Error(),
+			"merchantId":            merchantID,
+			"transactionIdentifier": transactionIdentifier,
+		})
 		return err
 	}
 	return nil
 }
 
-// getRestaurantRefID looks up the restaurant refId from the pre-fetched merchant mapping.
-func getRestaurantRefID(merchantID string) string {
-	return merchantMapping[merchantID]
+// getRestaurantRefID fetches the restaurant refId for a merchantId, caching the result.
+func getRestaurantRefID(ctx context.Context, merchantID string) string {
+	if val, ok := merchantCache.Load(merchantID); ok {
+		logger.Log().Debug("Merchant cache hit", map[string]interface{}{
+			"merchantId": merchantID,
+			"refId":      val.(string),
+		})
+		return val.(string)
+	}
+
+	collection := os.Getenv("MERCHANT_COLLECTION")
+	if collection == "" {
+		collection = "merchant_accounts"
+	}
+
+	var doc bson.M
+	err := database.GetMongoDB().Collection(collection).FindOne(ctx, bson.D{
+		{Key: "gatewayId", Value: "WorldPay"},
+		{Key: "merchantId", Value: merchantID},
+	}).Decode(&doc)
+
+	var refID string
+	if err == nil {
+		refID, _ = doc["refId"].(string)
+		logger.Log().Info("Merchant mapping fetched from DB", map[string]interface{}{
+			"merchantId": merchantID,
+			"refId":      refID,
+		})
+	} else {
+		logger.Log().Warn("Merchant mapping not found", map[string]interface{}{
+			"merchantId": merchantID,
+			"error":      err.Error(),
+		})
+	}
+
+	merchantCache.Store(merchantID, refID)
+	return refID
 }
