@@ -56,7 +56,18 @@ func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) (*Rec
 
 	reconcileTx := func(merchantID string) {
 		totalTx++
-		emafRefId := saveParsedTransaction(ctx, mr, tx, fileName)
+		emafRefId, err := saveParsedTransaction(ctx, mr, tx, fileName)
+		if err != nil {
+			errorTx++
+			logger.Log().Error("Failed to save parsed transaction, skipping reconciliation", map[string]interface{}{
+				"error":      err.Error(),
+				"file":       fileName,
+				"txIndex":    totalTx,
+				"merchantId": merchantID,
+				"amount":     tx.Amount,
+			})
+			return
+		}
 
 		logger.Log().Debug("Reconciling transaction", map[string]interface{}{
 			"file":       fileName,
@@ -184,7 +195,10 @@ func ProcessFile(ctx context.Context, body io.ReadCloser, fileName string) (*Rec
 func reconcileTransaction(ctx context.Context, merchantID string, tx *parser.Transaction, emafRefId string) (bool, error) {
 	restaurantRefID := getRestaurantRefID(ctx, merchantID)
 
-	amount, _ := strconv.ParseFloat(strings.TrimSpace(tx.Amount), 64)
+	amount, err := strconv.ParseFloat(strings.TrimSpace(tx.Amount), 64)
+	if err != nil {
+		return false, fmt.Errorf("invalid transaction amount %q: %w", tx.Amount, err)
+	}
 	date, err := time.Parse(time.RFC3339, tx.DateTime)
 	if err != nil {
 		logger.Log().Warn("Invalid transaction date, using current time", map[string]interface{}{
@@ -354,7 +368,9 @@ func handleMatched(
 		"event":      producerEvent,
 	})
 
-	markEmafReconciled(ctx, emafRefId, refID)
+	if err := markEmafReconciled(ctx, emafRefId, refID); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -426,13 +442,8 @@ func getRestaurantRefID(ctx context.Context, merchantID string) string {
 		return val.(string)
 	}
 
-	collection := os.Getenv("MERCHANT_COLLECTION")
-	if collection == "" {
-		collection = "merchant_accounts"
-	}
-
 	var doc bson.M
-	err := database.GetMongoDB().Collection(collection).FindOne(ctx, bson.D{
+	err := database.GetMongoDB().Collection("merchant_accounts").FindOne(ctx, bson.D{
 		{Key: "gatewayId", Value: "WorldPay"},
 		{Key: "merchantId", Value: merchantID},
 	}).Decode(&doc)

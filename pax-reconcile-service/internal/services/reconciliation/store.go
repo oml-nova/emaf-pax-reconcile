@@ -15,7 +15,7 @@ import (
 // saveParsedTransaction inserts (or upserts) a parsed EMAF transaction into
 // emaf_parsed_transactions. Called after a full transaction has been assembled,
 // before reconciliation runs.
-func saveParsedTransaction(ctx context.Context, mr *parser.MerchantRecord, tx *parser.Transaction, fileName string) string {
+func saveParsedTransaction(ctx context.Context, mr *parser.MerchantRecord, tx *parser.Transaction, fileName string) (string, error) {
 	now := time.Now().UTC()
 	refID := uuid.New().String()
 
@@ -126,15 +126,15 @@ func saveParsedTransaction(ctx context.Context, mr *parser.MerchantRecord, tx *p
 			"fileName": fileName,
 			"amount":   tx.Amount,
 		})
-	} else {
-		logger.Log().Debug("Saved parsed EMAF transaction", map[string]interface{}{
-			"refId":    refID,
-			"fileName": fileName,
-			"amount":   tx.Amount,
-			"mid":      mr.SettlementMID,
-		})
+		return "", err
 	}
-	return refID
+	logger.Log().Debug("Saved parsed EMAF transaction", map[string]interface{}{
+		"refId":    refID,
+		"fileName": fileName,
+		"amount":   tx.Amount,
+		"mid":      mr.SettlementMID,
+	})
+	return refID, nil
 }
 
 // markEmafReconciled sets isReconciled=true on the emaf_parsed_transactions doc
@@ -142,9 +142,9 @@ func saveParsedTransaction(ctx context.Context, mr *parser.MerchantRecord, tx *p
 // reconciledTxRefId is the refId of the matched order_transaction.
 //
 // Required index on emaf_parsed_transactions: { refId: 1 }
-func markEmafReconciled(ctx context.Context, emafRefId, reconciledTxRefId string) {
+func markEmafReconciled(ctx context.Context, emafRefId, reconciledTxRefId string) error {
 	if emafRefId == "" {
-		return
+		return nil
 	}
 	now := time.Now().UTC()
 	col := database.GetMongoDB().Collection("emaf_parsed_transactions")
@@ -159,8 +159,10 @@ func markEmafReconciled(ctx context.Context, emafRefId, reconciledTxRefId string
 		}}},
 	)
 	if err != nil {
-		logger.Log().Warn("Failed to mark emaf transaction as reconciled", map[string]interface{}{
+		logger.Log().Error("Failed to mark emaf transaction as reconciled", map[string]interface{}{
 			"error": err.Error(), "emafRefId": emafRefId,
 		})
+		return err
 	}
+	return nil
 }
