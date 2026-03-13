@@ -283,12 +283,12 @@ func handleMatched(
 	tx *parser.Transaction,
 	emafRefId string,
 ) error {
-	refID, _ := found["refId"].(string)
+	orderTransactionRefId, _ := found["refId"].(string)
 	orderRefID, _ := found["orderRefId"].(string)
 	now := time.Now().UTC()
 
 	logger.Log().Info("Transaction matched", map[string]interface{}{
-		"refId":                 refID,
+		"orderTransactionRefId": orderTransactionRefId,
 		"orderRefId":            orderRefID,
 		"merchantId":            merchantID,
 		"amount":                amount,
@@ -302,14 +302,14 @@ func handleMatched(
 		"expiryDate": tx.Expiry,
 	}
 
+	matchedRefId := uuid.New().String()
 	matchedCol := database.GetMongoDB().Collection("matched_order_transaction")
 	_, err := matchedCol.UpdateOne(ctx,
-		bson.D{{Key: "refId", Value: refID}},
+		bson.D{{Key: "orderTransactionRefId", Value: orderTransactionRefId}},
 		bson.D{
 			{Key: "$set", Value: bson.M{
-				"refId":                 refID,
 				"orderRefId":            orderRefID,
-				"orderTransactionRefId": refID,
+				"orderTransactionRefId": orderTransactionRefId,
 				"restaurantRefId":       restaurantRefID,
 				"merchantId":            merchantID,
 				"gatewayName":           "WorldPay",
@@ -321,54 +321,57 @@ func handleMatched(
 				"transactionDateTime":   date,
 				"lastModifiedDate":      now,
 			}},
-			{Key: "$setOnInsert", Value: bson.M{"createdDate": now}},
+			{Key: "$setOnInsert", Value: bson.M{
+				"refId":       matchedRefId,
+				"createdDate": now,
+			}},
 		},
 		options.Update().SetUpsert(true),
 	)
 	if err != nil {
 		logger.Log().Error("Failed to upsert matched_order_transaction", map[string]interface{}{
-			"error": err.Error(),
-			"refId": refID,
+			"error":                 err.Error(),
+			"orderTransactionRefId": orderTransactionRefId,
 		})
 		return err
 	}
 
 	result, err := database.GetMongoDB().Collection("order_transactions").UpdateOne(ctx,
-		bson.D{{Key: "refId", Value: refID}},
+		bson.D{{Key: "refId", Value: orderTransactionRefId}},
 		bson.D{{Key: "$set", Value: bson.M{"paymentStatus": "Success"}}},
 	)
 	if err != nil {
 		logger.Log().Error("Failed to update order_transactions paymentStatus", map[string]interface{}{
 			"error": err.Error(),
-			"refId": refID,
+			"refId": orderTransactionRefId,
 		})
 		return err
 	}
 	if result.MatchedCount == 0 {
-		logger.Log().Warn("order_transactions update matched 0 docs — possible stale read", map[string]interface{}{"refId": refID})
+		logger.Log().Warn("order_transactions update matched 0 docs — possible stale read", map[string]interface{}{"refId": orderTransactionRefId})
 	}
 
 	producerEvent := os.Getenv("PRODUCER_EVENT")
 	if err := kafka.PublishKafkaMessage(orderRefID, producerEvent, map[string]string{
 		"orderRefId":       orderRefID,
-		"transactionRefId": refID,
+		"transactionRefId": orderTransactionRefId,
 		"paymentStatus":    "Success",
 	}); err != nil {
 		logger.Log().Error("Failed to publish Kafka reconciliation event", map[string]interface{}{
 			"error":      err.Error(),
 			"orderRefId": orderRefID,
-			"refId":      refID,
+			"refId":      orderTransactionRefId,
 		})
 		return err
 	}
 
 	logger.Log().Debug("Kafka reconciliation event published", map[string]interface{}{
 		"orderRefId": orderRefID,
-		"refId":      refID,
+		"refId":      orderTransactionRefId,
 		"event":      producerEvent,
 	})
 
-	if err := markEmafReconciled(ctx, emafRefId, refID); err != nil {
+	if err := markEmafReconciled(ctx, emafRefId, matchedRefId); err != nil {
 		return err
 	}
 	return nil

@@ -107,6 +107,23 @@ func saveParsedTransaction(ctx context.Context, mr *parser.MerchantRecord, tx *p
 		"dccMcp":                 tx.DCCMCPIndicator,
 		"tipGratuityAmount":      tx.TipGratuityAmount,
 		"actionType":             tx.ActionType,
+
+		// CR5
+		"amazonPayChargeId": tx.AmazonPayChargeID,
+		// CR13
+		"softPosMobileDeviceType": tx.SoftPOSMobileDeviceType,
+		"softPosMobileTerminalId": tx.SoftPOSMobileTerminalId,
+		// CR15
+		"merchantSurchargeAmount":     tx.MerchantSurchargeAmount,
+		"merchantSurchargeAmountSign": tx.MerchantSurchargeAmountSign,
+		// Customer ID
+		"correlationId": tx.CorrelationId,
+		// Reward Data
+		"terminalAllowsRewardsLoyalty":  tx.TerminalAllowsRewardsLoyalty,
+		"binEligibleForRewardsLoyalty":  tx.BinEligibleForRewardsLoyalty,
+		"cardEligibleForRewardsLoyalty": tx.CardEligibleForRewardsLoyalty,
+		"rewardLoyaltyAmount":           tx.RewardLoyaltyAmount,
+
 		"transactionId":          tx.TransactionID,
 		"banknetNo":              tx.BanknetNo,
 		"banknetSettlementDate":  tx.BanknetSettlementDate,
