@@ -9,4 +9,5 @@ import (
 func InitReconciliationRoutes(r *gin.Engine) {
 	group := r.Group("/reconciliation")
 	group.POST("/trigger", reconciliation.TriggerFileProcessing)
+	group.POST("/upload", reconciliation.UploadFileProcessing)
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"log"
+	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,11 @@ func RegisterRoutes() GinEngine {
 }
 
 func (r GinEngine) StartServer() {
-	if err := r.Run(); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
